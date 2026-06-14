@@ -66,17 +66,13 @@ flowtest run flows/example.yaml
 
 ### Install
 
-**macOS / Linux (recommended):**
+**macOS / Linux / Windows (recommended):**
 
 ```bash
 curl -sSfL https://raw.githubusercontent.com/rakrisi/flowtest/main/install.sh | sh
 ```
 
-**Homebrew:**
-
-```bash
-brew install rakrisi/tap/flowtest
-```
+The script auto-detects your OS and architecture, downloads the correct binary from the [latest release](https://github.com/rakrisi/flowtest/releases), and installs it. It falls back to `go install` if the archive is unavailable.
 
 **Go install:**
 
