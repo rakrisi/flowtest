@@ -99,19 +99,64 @@ trap 'rm -rf "$TMP"' EXIT INT TERM
 
 info "Downloading $ARCHIVE..."
 
+DOWNLOAD_FAILED=0
 if [ "$DOWNLOADER" = "curl" ]; then
-  curl -sSfL "$URL" -o "$TMP/$ARCHIVE" || fatal "Download failed: $URL"
+  if ! curl -sSfL "$URL" -o "$TMP/$ARCHIVE"; then
+    warn "Download failed: $URL"
+    DOWNLOAD_FAILED=1
+  fi
 else
-  wget -qO "$TMP/$ARCHIVE" "$URL" || fatal "Download failed: $URL"
+  if ! wget -qO "$TMP/$ARCHIVE" "$URL"; then
+    warn "Download failed: $URL"
+    DOWNLOAD_FAILED=1
+  fi
 fi
 
-tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
+if [ "$DOWNLOAD_FAILED" -eq 0 ]; then
+  if tar -xzf "$TMP/$ARCHIVE" -C "$TMP"; then
+    # Verify the binary extracted correctly
+    if [ -f "$TMP/$BINARY" ]; then
+      chmod +x "$TMP/$BINARY"
+      mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
+    else
+      warn "Binary not found in archive after extraction"
+      DOWNLOAD_FAILED=1
+    fi
+  else
+    warn "Failed to extract archive: $TMP/$ARCHIVE"
+    DOWNLOAD_FAILED=1
+  fi
+fi
 
-# Verify the binary extracted correctly
-[ -f "$TMP/$BINARY" ] || fatal "Binary not found in archive. Please report this at https://github.com/${REPO}/issues"
+# Fallback: try `go install` when release asset is missing
+if [ "$DOWNLOAD_FAILED" -ne 0 ]; then
+  warn "Falling back to 'go install' (requires Go >=1.18)"
+  if command -v go >/dev/null 2>&1; then
+    if ! go install github.com/rakrisi/flowtest/cmd/flowtest@${VERSION}; then
+      fatal "go install failed. Please build from source: git clone https://github.com/${REPO} && cd flowtest && go build -o ${BINARY} ./cmd/flowtest/"
+    fi
 
-chmod +x "$TMP/$BINARY"
-mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
+    # Locate installed binary
+    GOBIN="$(go env GOBIN 2>/dev/null)"
+    if [ -n "$GOBIN" ] && [ -f "$GOBIN/$BINARY" ]; then
+      mv "$GOBIN/$BINARY" "$INSTALL_DIR/$BINARY"
+    else
+      GOPATH="$(go env GOPATH 2>/dev/null)"
+      if [ -n "$GOPATH" ] && [ -f "$GOPATH/bin/$BINARY" ]; then
+        mv "$GOPATH/bin/$BINARY" "$INSTALL_DIR/$BINARY"
+      else
+        if command -v $BINARY >/dev/null 2>&1; then
+          BIN_PATH="$(command -v $BINARY)"
+          mv "$BIN_PATH" "$INSTALL_DIR/$BINARY"
+        else
+          fatal "Installed binary not found after go install"
+        fi
+      fi
+    fi
+  else
+    fatal "Download failed and 'go' is not installed. Please install Go or download a release from https://github.com/${REPO}/releases"
+  fi
+fi
 
 # ── Verify installation ───────────────────────────────────────────────────────
 

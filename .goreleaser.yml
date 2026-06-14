@@ -1,4 +1,25 @@
-# GoReleaser configuration
+project_name: flowtest
+release:
+  github:
+    owner: rakrisi
+    name: flowtest
+builds:
+  - id: flowtest
+    main: ./cmd/flowtest
+    binary: flowtest
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+archives:
+  - format: tar.gz
+    replacer:
+      - from: "${binary}_${version}_${os}_${arch}.tar.gz"
+    files:
+      - flowtest
+brews: []# GoReleaser configuration
 # See https://goreleaser.com for documentation
 
 version: 2
