@@ -80,33 +80,6 @@ release:
     
     **Full Changelog**: https://github.com/rakrisi/flowtest/compare/{{ .PreviousTag }}...{{ .Tag }}
 
-# Homebrew tap
-brews:
-  - repository:
-      owner: rakrisi
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Formula
-    homepage: https://github.com/rakrisi/flowtest
-    description: "Declarative backend integration testing - YAML-driven test flows"
-    license: MIT
-    test: |
-      system "#{bin}/flowtest", "--version"
-    install: |
-      bin.install "flowtest"
-      (etc/"flowtest").install "flowtest.yaml"
-      (prefix/"flows").install Dir["flows/*.yaml"]
-
-# Scoop manifest for Windows
-scoops:
-  - repository:
-      owner: rakrisi
-      name: scoop-bucket
-      token: "{{ .Env.SCOOP_GITHUB_TOKEN }}"
-    homepage: https://github.com/rakrisi/flowtest
-    description: "Declarative backend integration testing - YAML-driven test flows"
-    license: MIT
-
 nfpms:
   - id: flowtest
     package_name: flowtest
