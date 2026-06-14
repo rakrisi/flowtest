@@ -107,53 +107,6 @@ scoops:
     description: "Declarative backend integration testing - YAML-driven test flows"
     license: MIT
 
-# Docker images
-dockers:
-  - image_templates:
-      - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-amd64"
-      - "ghcr.io/rakrisi/flowtest:latest-amd64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-    goos: linux
-    goarch: amd64
-    extra_files:
-      - flowtest.yaml
-      - flows/
-
-  - image_templates:
-      - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-arm64"
-      - "ghcr.io/rakrisi/flowtest:latest-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-    goos: linux
-    goarch: arm64
-    extra_files:
-      - flowtest.yaml
-      - flows/
-
-docker_manifests:
-  - name_template: "ghcr.io/rakrisi/flowtest:{{ .Tag }}"
-    image_templates:
-      - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-amd64"
-      - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-arm64"
-
-  - name_template: "ghcr.io/rakrisi/flowtest:latest"
-    image_templates:
-      - "ghcr.io/rakrisi/flowtest:latest-amd64"
-      - "ghcr.io/rakrisi/flowtest:latest-arm64"
-
 nfpms:
   - id: flowtest
     package_name: flowtest
