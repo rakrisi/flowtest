@@ -122,6 +122,9 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
     goos: linux
     goarch: amd64
+    extra_files:
+      - flowtest.yaml
+      - flows/
 
   - image_templates:
       - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-arm64"
@@ -136,6 +139,9 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
     goos: linux
     goarch: arm64
+    extra_files:
+      - flowtest.yaml
+      - flows/
 
 docker_manifests:
   - name_template: "ghcr.io/rakrisi/flowtest:{{ .Tag }}"
