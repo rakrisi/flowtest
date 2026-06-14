@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/radhe-singh/flowtest/internal/engine"
+	"github.com/rakrisi/flowtest/internal/engine"
 )
 
 // PrintSummary prints the final pass/fail/skip count line.

@@ -1,4 +1,4 @@
-module github.com/radhe-singh/flowtest
+module github.com/rakrisi/flowtest
 
 go 1.25.0
 

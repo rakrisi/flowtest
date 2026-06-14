@@ -6,7 +6,7 @@ FlowTest is a Go CLI tool that reads YAML flow files and executes backend integr
 
 Supports **multiple database engines**: PostgreSQL, MySQL, MongoDB, and SQLite — auto-detected from DSN schemes.
 
-**Module:** `github.com/radhe-singh/flowtest`
+**Module:** `github.com/rakrisi/flowtest`
 **Go Version:** 1.25.0
 **Binary:** `flowtest`
 **Version:** 1.0.0
@@ -587,7 +587,7 @@ import (
 
     "external/dependency"
 
-    "github.com/radhe-singh/flowtest/internal/..."
+    "github.com/rakrisi/flowtest/internal/..."
 )
 ```
 

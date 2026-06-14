@@ -1,4 +1,4 @@
-module github.com/radhe-singh/flowtest-testserver
+module github.com/rakrisi/flowtest-testserver
 
 go 1.25.0
 

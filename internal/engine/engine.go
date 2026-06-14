@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/radhe-singh/flowtest/internal/config"
+	"github.com/rakrisi/flowtest/internal/config"
 )
 
 // Driver is the interface all step drivers must implement.

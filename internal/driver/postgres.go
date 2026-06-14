@@ -9,8 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/radhe-singh/flowtest/internal/config"
-	"github.com/radhe-singh/flowtest/internal/engine"
+	"github.com/rakrisi/flowtest/internal/config"
+	"github.com/rakrisi/flowtest/internal/engine"
 )
 
 // PostgresDriver executes database seeds and queries against a PostgreSQL instance.

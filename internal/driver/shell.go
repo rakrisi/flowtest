@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/radhe-singh/flowtest/internal/config"
-	"github.com/radhe-singh/flowtest/internal/engine"
+	"github.com/rakrisi/flowtest/internal/config"
+	"github.com/rakrisi/flowtest/internal/engine"
 )
 
 // cappedBuffer is a writer that stops accepting data beyond its limit,

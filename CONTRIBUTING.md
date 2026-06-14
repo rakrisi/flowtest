@@ -58,7 +58,7 @@ Feature requests are welcome! Please include:
 
 ```bash
 # Clone
-git clone https://github.com/radhe-singh/flowtest.git
+git clone https://github.com/rakrisi/flowtest.git
 cd flowtest
 
 # Build

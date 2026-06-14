@@ -10,7 +10,7 @@ For AI agents and developers writing flow files from scratch. Read this before g
 
 ```bash
 # Build from source
-git clone https://github.com/radhe-singh/flowtest
+git clone https://github.com/rakrisi/flowtest
 cd flowtest
 go build -o flowtest ./cmd/flowtest/
 ```

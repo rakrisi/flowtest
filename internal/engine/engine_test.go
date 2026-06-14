@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radhe-singh/flowtest/internal/config"
+	"github.com/rakrisi/flowtest/internal/config"
 )
 
 // mockDriver is a test driver that returns configured results.

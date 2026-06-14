@@ -73,7 +73,7 @@ changelog:
 
 release:
   github:
-    owner: radhe-singh
+    owner: rakrisi
     name: flowtest
   draft: false
   prerelease: auto
@@ -81,16 +81,16 @@ release:
   header: |
     ## FlowTest {{ .Tag }}
     
-    **Full Changelog**: https://github.com/radhe-singh/flowtest/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/rakrisi/flowtest/compare/{{ .PreviousTag }}...{{ .Tag }}
 
 # Homebrew tap
 brews:
   - repository:
-      owner: radhe-singh
+      owner: rakrisi
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     folder: Formula
-    homepage: https://github.com/radhe-singh/flowtest
+    homepage: https://github.com/rakrisi/flowtest
     description: "Declarative backend integration testing - YAML-driven test flows"
     license: MIT
     test: |
@@ -103,18 +103,18 @@ brews:
 # Scoop manifest for Windows
 scoop:
   bucket:
-    owner: radhe-singh
+    owner: rakrisi
     name: scoop-bucket
     token: "{{ .Env.SCOOP_GITHUB_TOKEN }}"
-  homepage: https://github.com/radhe-singh/flowtest
+  homepage: https://github.com/rakrisi/flowtest
   description: "Declarative backend integration testing - YAML-driven test flows"
   license: MIT
 
 # Docker images
 dockers:
   - image_templates:
-      - "ghcr.io/radhe-singh/flowtest:{{ .Tag }}-amd64"
-      - "ghcr.io/radhe-singh/flowtest:latest-amd64"
+      - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-amd64"
+      - "ghcr.io/rakrisi/flowtest:latest-amd64"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -127,8 +127,8 @@ dockers:
     goarch: amd64
 
   - image_templates:
-      - "ghcr.io/radhe-singh/flowtest:{{ .Tag }}-arm64"
-      - "ghcr.io/radhe-singh/flowtest:latest-arm64"
+      - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-arm64"
+      - "ghcr.io/rakrisi/flowtest:latest-arm64"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -141,20 +141,20 @@ dockers:
     goarch: arm64
 
 docker_manifests:
-  - name_template: "ghcr.io/radhe-singh/flowtest:{{ .Tag }}"
+  - name_template: "ghcr.io/rakrisi/flowtest:{{ .Tag }}"
     image_templates:
-      - "ghcr.io/radhe-singh/flowtest:{{ .Tag }}-amd64"
-      - "ghcr.io/radhe-singh/flowtest:{{ .Tag }}-arm64"
+      - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-amd64"
+      - "ghcr.io/rakrisi/flowtest:{{ .Tag }}-arm64"
 
-  - name_template: "ghcr.io/radhe-singh/flowtest:latest"
+  - name_template: "ghcr.io/rakrisi/flowtest:latest"
     image_templates:
-      - "ghcr.io/radhe-singh/flowtest:latest-amd64"
-      - "ghcr.io/radhe-singh/flowtest:latest-arm64"
+      - "ghcr.io/rakrisi/flowtest:latest-amd64"
+      - "ghcr.io/rakrisi/flowtest:latest-arm64"
 
 nfpms:
   - id: flowtest
     package_name: flowtest
-    homepage: https://github.com/radhe-singh/flowtest
+    homepage: https://github.com/rakrisi/flowtest
     description: "Declarative backend integration testing - YAML-driven test flows"
     maintainer: Radhe Singh <radhe.singh@example.com>
     license: MIT

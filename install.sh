@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-REPO="radhe-singh/flowtest"
+REPO="rakrisi/flowtest"
 BINARY="flowtest"
 INSTALL_DIR="${FLOWTEST_INSTALL_DIR:-}"
 

@@ -1,7 +1,7 @@
 .PHONY: build test vet lint clean install run-integration
 
 BINARY := flowtest
-MODULE := github.com/radhe-singh/flowtest
+MODULE := github.com/rakrisi/flowtest
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
 ## build: Build the flowtest binary

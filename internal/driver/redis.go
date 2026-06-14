@@ -8,8 +8,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/radhe-singh/flowtest/internal/config"
-	"github.com/radhe-singh/flowtest/internal/engine"
+	"github.com/rakrisi/flowtest/internal/config"
+	"github.com/rakrisi/flowtest/internal/engine"
 )
 
 // RedisDriver executes Redis operations.

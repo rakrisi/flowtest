@@ -1,11 +1,11 @@
 # FlowTest
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev)
-[![Release](https://img.shields.io/github/v/release/radhe-singh/flowtest?style=flat)](https://github.com/radhe-singh/flowtest/releases)
+[![Release](https://img.shields.io/github/v/release/rakrisi/flowtest?style=flat)](https://github.com/rakrisi/flowtest/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen?style=flat)](https://github.com/radhe-singh/flowtest/actions)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen?style=flat)](https://github.com/rakrisi/flowtest/actions)
 [![Coverage](https://img.shields.io/badge/coverage-61%25-yellow?style=flat)]()
-[![Go Report Card](https://goreportcard.com/badge/github.com/radhe-singh/flowtest)](https://goreportcard.com/report/github.com/radhe-singh/flowtest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rakrisi/flowtest)](https://goreportcard.com/report/github.com/rakrisi/flowtest)
 
 Declarative backend integration testing. Write YAML, test everything.
 
@@ -15,7 +15,7 @@ FlowTest reads YAML flow files and executes backend test sequences — API calls
 
 ```bash
 # 1. Install
-curl -sSfL https://raw.githubusercontent.com/radhe-singh/flowtest/main/install.sh | sh
+curl -sSfL https://raw.githubusercontent.com/rakrisi/flowtest/main/install.sh | sh
 
 # 2. Create a flow (no infrastructure required)
 cat > hello.yaml << 'EOF'
@@ -69,25 +69,25 @@ flowtest run flows/example.yaml
 **macOS / Linux (recommended):**
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/radhe-singh/flowtest/main/install.sh | sh
+curl -sSfL https://raw.githubusercontent.com/rakrisi/flowtest/main/install.sh | sh
 ```
 
 **Homebrew:**
 
 ```bash
-brew install radhe-singh/tap/flowtest
+brew install rakrisi/tap/flowtest
 ```
 
 **Go install:**
 
 ```bash
-go install github.com/radhe-singh/flowtest/cmd/flowtest@latest
+go install github.com/rakrisi/flowtest/cmd/flowtest@latest
 ```
 
 **Build from source:**
 
 ```bash
-git clone https://github.com/radhe-singh/flowtest.git
+git clone https://github.com/rakrisi/flowtest.git
 cd flowtest
 go build -o flowtest ./cmd/flowtest/
 ```

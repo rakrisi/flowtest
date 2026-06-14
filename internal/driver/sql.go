@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/radhe-singh/flowtest/internal/config"
-	"github.com/radhe-singh/flowtest/internal/engine"
+	"github.com/rakrisi/flowtest/internal/config"
+	"github.com/rakrisi/flowtest/internal/engine"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "modernc.org/sqlite"
