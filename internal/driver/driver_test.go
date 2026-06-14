@@ -426,12 +426,27 @@ func TestHeaderMap_MultipleValues(t *testing.T) {
 	h.Add("X-Custom", "value2")
 
 	m := headerMap(h)
+	val, ok := m["X-Custom"].(string)
+	if !ok {
+		t.Fatalf("expected string for multiple values, got %T", m["X-Custom"])
+	}
+	if val != "value1, value2" {
+		t.Errorf("expected 'value1, value2', got %q", val)
+	}
+}
+
+func TestRawHeaderMap(t *testing.T) {
+	h := http.Header{}
+	h.Add("X-Custom", "value1")
+	h.Add("X-Custom", "value2")
+
+	m := rawHeaderMap(h)
 	vals, ok := m["X-Custom"].([]interface{})
 	if !ok {
 		t.Fatalf("expected array for multiple values, got %T", m["X-Custom"])
 	}
-	if len(vals) != 2 {
-		t.Errorf("expected 2 values, got %d", len(vals))
+	if len(vals) != 2 || vals[0] != "value1" || vals[1] != "value2" {
+		t.Errorf("expected ['value1', 'value2'], got %v", vals)
 	}
 }
 

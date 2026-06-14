@@ -101,14 +101,18 @@ func (d *HTTPDriver) Execute(ctx context.Context, stepConfig interface{}, flowCt
 	// Build result
 	result := map[string]interface{}{
 		"response": map[string]interface{}{
-			"status":  resp.StatusCode,
-			"headers": headerMap(resp.Header),
+			"status":      resp.StatusCode,
+			"headers":     headerMap(resp.Header),
+			"raw_headers": rawHeaderMap(resp.Header),
 		},
 	}
 
 	// Try to parse as JSON
 	var parsed interface{}
-	if err := json.Unmarshal(respBody, &parsed); err == nil {
+	trimmedBody := bytes.TrimSpace(respBody)
+	if len(trimmedBody) == 0 {
+		result["response"].(map[string]interface{})["body"] = nil
+	} else if err := json.Unmarshal(respBody, &parsed); err == nil {
 		result["response"].(map[string]interface{})["body"] = parsed
 	} else {
 		result["response"].(map[string]interface{})["body"] = string(respBody)
@@ -150,15 +154,19 @@ func applyAuth(req *http.Request, auth *config.AuthConfig) error {
 func headerMap(h http.Header) map[string]interface{} {
 	m := make(map[string]interface{}, len(h))
 	for k, v := range h {
-		if len(v) == 1 {
-			m[k] = v[0]
-		} else {
-			vals := make([]interface{}, len(v))
-			for i, s := range v {
-				vals[i] = s
-			}
-			m[k] = vals
+		m[k] = strings.Join(v, ", ")
+	}
+	return m
+}
+
+func rawHeaderMap(h http.Header) map[string]interface{} {
+	m := make(map[string]interface{}, len(h))
+	for k, v := range h {
+		vals := make([]interface{}, len(v))
+		for i, s := range v {
+			vals[i] = s
 		}
+		m[k] = vals
 	}
 	return m
 }

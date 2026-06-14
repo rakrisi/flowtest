@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -407,7 +408,26 @@ func (e *Engine) resolveStepConfig(step *config.Step, flowCtx *Context) interfac
 	switch {
 	case step.API != nil:
 		api := *step.API
-		api.URL = flowCtx.ResolveString(api.URL)
+		// Parse query parameters separately to URL-encode resolved values correctly
+		parts := strings.SplitN(api.URL, "?", 2)
+		resolvedBase := flowCtx.ResolveString(parts[0])
+		if len(parts) > 1 {
+			queryParams, err := url.ParseQuery(parts[1])
+			if err == nil {
+				for paramName, paramValues := range queryParams {
+					resolvedValues := make([]string, len(paramValues))
+					for i, val := range paramValues {
+						resolvedValues[i] = flowCtx.ResolveString(val)
+					}
+					queryParams[paramName] = resolvedValues
+				}
+				api.URL = resolvedBase + "?" + queryParams.Encode()
+			} else {
+				api.URL = resolvedBase + "?" + flowCtx.ResolveString(parts[1])
+			}
+		} else {
+			api.URL = resolvedBase
+		}
 		if api.Headers != nil {
 			resolved := make(map[string]string, len(api.Headers))
 			for k, v := range api.Headers {

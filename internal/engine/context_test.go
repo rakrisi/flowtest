@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -395,3 +396,56 @@ func TestContext_ResolveInterface_DeepNested(t *testing.T) {
 		}
 	})
 }
+
+func TestContext_ResolveInterfaceTypeCoercion(t *testing.T) {
+	ctx := NewContext()
+	ctx.Set("is_active", true)
+	ctx.Set("retry_count", 3)
+	ctx.Set("price", 19.99)
+	ctx.Set("meta", map[string]interface{}{"tags": []interface{}{"a", "b"}})
+
+	tests := []struct {
+		name  string
+		input interface{}
+		want  interface{}
+	}{
+		{
+			name:  "exact match bool",
+			input: "${is_active}",
+			want:  true,
+		},
+		{
+			name:  "exact match int",
+			input: "${retry_count}",
+			want:  3,
+		},
+		{
+			name:  "exact match float",
+			input: "${price}",
+			want:  19.99,
+		},
+		{
+			name:  "exact match map",
+			input: "${meta}",
+			want:  map[string]interface{}{"tags": []interface{}{"a", "b"}},
+		},
+		{
+			name:  "interpolated string (no coercion)",
+			input: "status is ${is_active}",
+			want:  "status is true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ctx.ResolveInterface(tt.input)
+			if fmt.Sprintf("%v", got) != fmt.Sprintf("%v", tt.want) {
+				t.Errorf("ResolveInterface() = %v, want %v", got, tt.want)
+			}
+			if fmt.Sprintf("%T", got) != fmt.Sprintf("%T", tt.want) {
+				t.Errorf("ResolveInterface() type = %T, want %T", got, tt.want)
+			}
+		})
+	}
+}
+

@@ -20,6 +20,7 @@ func NewContext() *Context {
 }
 
 var flowVarRegex = regexp.MustCompile(`\$\{([a-zA-Z_][a-zA-Z0-9_.]*)\}`)
+var exactVarRegex = regexp.MustCompile(`^\$\{([a-zA-Z_][a-zA-Z0-9_.]*)\}$`)
 
 // Set stores a value in the context. Supports dot notation for nested paths.
 func (c *Context) Set(key string, value interface{}) {
@@ -91,6 +92,12 @@ func (c *Context) ResolveString(input string) string {
 func (c *Context) ResolveInterface(v interface{}) interface{} {
 	switch val := v.(type) {
 	case string:
+		if matches := exactVarRegex.FindStringSubmatch(val); len(matches) == 2 {
+			key := matches[1]
+			if actualVal, ok := c.Get(key); ok {
+				return actualVal
+			}
+		}
 		return c.ResolveString(val)
 	case map[string]interface{}:
 		resolved := make(map[string]interface{}, len(val))

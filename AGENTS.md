@@ -9,7 +9,7 @@ Supports **multiple database engines**: PostgreSQL, MySQL, MongoDB, and SQLite â
 **Module:** `github.com/rakrisi/flowtest`
 **Go Version:** 1.25.0
 **Binary:** `flowtest`
-**Version:** 1.0.0
+**Version:** 0.0.6
 
 ---
 

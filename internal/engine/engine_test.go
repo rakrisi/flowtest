@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/rakrisi/flowtest/internal/config"
@@ -345,3 +346,38 @@ func TestEngine_DBStep(t *testing.T) {
 		t.Errorf("driver.called = %d, want 1", driver.called)
 	}
 }
+
+func TestEngine_ResolveStepConfig_APIURLQueryEncoding(t *testing.T) {
+	eng := NewEngine(&nullPrinter{}, false, false)
+	ctx := NewContext()
+	ctx.Set("search_query", "hello & world")
+	ctx.Set("page", 2)
+
+	step := &config.Step{
+		API: &config.APIConfig{
+			Method: "GET",
+			URL:    "http://example.com/search?q=${search_query}&p=${page}&const=foo bar",
+		},
+	}
+
+	resolvedConfig := eng.resolveStepConfig(step, ctx)
+	apiCfg, ok := resolvedConfig.(*config.APIConfig)
+	if !ok {
+		t.Fatalf("expected resolved config to be *config.APIConfig, got %T", resolvedConfig)
+	}
+
+	expectedPart1 := "q=hello+%26+world"
+	expectedPart2 := "p=2"
+	expectedPart3 := "const=foo+bar"
+
+	if !strings.Contains(apiCfg.URL, expectedPart1) {
+		t.Errorf("expected URL to contain %q, got %q", expectedPart1, apiCfg.URL)
+	}
+	if !strings.Contains(apiCfg.URL, expectedPart2) {
+		t.Errorf("expected URL to contain %q, got %q", expectedPart2, apiCfg.URL)
+	}
+	if !strings.Contains(apiCfg.URL, expectedPart3) {
+		t.Errorf("expected URL to contain %q, got %q", expectedPart3, apiCfg.URL)
+	}
+}
+
