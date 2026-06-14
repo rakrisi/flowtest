@@ -133,7 +133,28 @@ if [ "$DOWNLOAD_FAILED" -ne 0 ]; then
   warn "Falling back to 'go install' (requires Go >=1.18)"
   if command -v go >/dev/null 2>&1; then
     if ! go install github.com/rakrisi/flowtest/cmd/flowtest@${VERSION}; then
-      fatal "go install failed. Please build from source: git clone https://github.com/${REPO} && cd flowtest && go build -o ${BINARY} ./cmd/flowtest/"
+      warn "go install failed; attempting git clone + build as fallback"
+      # Try cloning and building from source as a fallback
+      if command -v git >/dev/null 2>&1; then
+        CLONE_DIR="$(mktemp -d)"
+        if git clone --depth 1 "https://github.com/${REPO}.git" "$CLONE_DIR"; then
+          if [ -n "$VERSION" ]; then
+            (cd "$CLONE_DIR" && git fetch --tags --quiet && git checkout "$VERSION" >/dev/null 2>&1 || true)
+          fi
+          if (cd "$CLONE_DIR" && go build -o "$CLONE_DIR/$BINARY" ./cmd/flowtest/); then
+            mv "$CLONE_DIR/$BINARY" "$INSTALL_DIR/$BINARY"
+            rm -rf "$CLONE_DIR"
+          else
+            rm -rf "$CLONE_DIR"
+            fatal "go build from source failed. Please build manually: git clone https://github.com/${REPO} && cd flowtest && go build -o ${BINARY} ./cmd/flowtest/"
+          fi
+        else
+          rm -rf "$CLONE_DIR"
+          fatal "git clone failed and go install failed. Please build manually or download a release from https://github.com/${REPO}/releases"
+        fi
+      else
+        fatal "go install failed and git is not available. Please build manually or download a release from https://github.com/${REPO}/releases"
+      fi
     fi
 
     # Locate installed binary
