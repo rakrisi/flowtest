@@ -86,7 +86,7 @@ brews:
       owner: rakrisi
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    folder: Formula
+    directory: Formula
     homepage: https://github.com/rakrisi/flowtest
     description: "Declarative backend integration testing - YAML-driven test flows"
     license: MIT
@@ -98,14 +98,14 @@ brews:
       (prefix/"flows").install Dir["flows/*.yaml"]
 
 # Scoop manifest for Windows
-scoop:
-  bucket:
-    owner: rakrisi
-    name: scoop-bucket
-    token: "{{ .Env.SCOOP_GITHUB_TOKEN }}"
-  homepage: https://github.com/rakrisi/flowtest
-  description: "Declarative backend integration testing - YAML-driven test flows"
-  license: MIT
+scoops:
+  - repository:
+      owner: rakrisi
+      name: scoop-bucket
+      token: "{{ .Env.SCOOP_GITHUB_TOKEN }}"
+    homepage: https://github.com/rakrisi/flowtest
+    description: "Declarative backend integration testing - YAML-driven test flows"
+    license: MIT
 
 # Docker images
 dockers:
