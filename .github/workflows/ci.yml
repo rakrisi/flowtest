@@ -30,7 +30,14 @@ jobs:
       - name: Run tests
         run: go test ./... -count=1 -race
 
+      - name: Show workspace
+        run: |
+          pwd
+          echo "Listing repository root:"
+          ls -la
+
       - name: Build binary
+        working-directory: ./
         run: go build -o flowtest ./cmd/flowtest/
 
       - name: Verify binary runs
