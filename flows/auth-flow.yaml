@@ -1,0 +1,91 @@
+name: Auth Flow
+description: Tests authentication and authorization lifecycle
+timeout: 15s
+
+env:
+  api_base: http://localhost:8000
+  redis: redis://localhost:6379
+
+steps:
+  - name: Register User
+    api:
+      method: POST
+      url: /auth/register
+      body:
+        email: newuser@test.com
+        password: secure123
+        name: Test User
+    assert:
+      - expr: "response.status == 201"
+      - expr: "response.body.id != ''"
+    save:
+      user_id: response.body.id
+
+  - name: Login
+    api:
+      method: POST
+      url: /auth/login
+      body:
+        email: newuser@test.com
+        password: secure123
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.token != ''"
+      - expr: "response.body.refresh_token != ''"
+    save:
+      token: response.body.token
+      refresh_token: response.body.refresh_token
+
+  - name: Access Protected Resource
+    api:
+      method: GET
+      url: /users/me
+      auth:
+        bearer: ${token}
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.email == 'newuser@test.com'"
+
+  - name: Verify Session in Redis
+    redis:
+      action: exists
+      key: "session:${user_id}"
+    assert:
+      - expr: "exists == true"
+
+  - name: Refresh Token
+    api:
+      method: POST
+      url: /auth/refresh
+      body:
+        refresh_token: ${refresh_token}
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.token != ''"
+    save:
+      token: response.body.token
+
+  - name: Logout
+    api:
+      method: POST
+      url: /auth/logout
+      auth:
+        bearer: ${token}
+    assert:
+      - expr: "response.status == 204"
+
+  - name: Verify Session Removed
+    redis:
+      action: exists
+      key: "session:${user_id}"
+    assert:
+      - expr: "exists == false"
+
+  - name: Access After Logout Should Fail
+    api:
+      method: GET
+      url: /users/me
+      auth:
+        bearer: ${token}
+    assert:
+      - expr: "response.status == 401"

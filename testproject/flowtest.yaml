@@ -1,0 +1,13 @@
+# FlowTest — Test Project Configuration
+# All services run locally via docker-compose
+
+env:
+  api_base: http://localhost:8000
+  kafka_brokers: localhost:9092
+  redis: redis://localhost:6379
+
+  databases:
+    db: postgres://myuser:mypassword@localhost:5432/referral?sslmode=disable
+    mysql_db: mysql://myuser:mypassword@localhost:3306/testdb
+    mongo_db: mongodb://localhost:27017/testdb
+    local: sqlite://./test.db

@@ -1,0 +1,172 @@
+# GoReleaser configuration
+# See https://goreleaser.com for documentation
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: flowtest
+    binary: flowtest
+    main: ./cmd/flowtest
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: flowtest
+    format: tar.gz
+    name_template: 'flowtest_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+      - flowtest.yaml
+      - flows/*.yaml
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+  groups:
+    - title: Features
+      regexp: '^feat.*'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix.*'
+      order: 1
+    - title: Performance
+      regexp: '^perf.*'
+      order: 2
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: radhe-singh
+    name: flowtest
+  draft: false
+  prerelease: auto
+  mode: append
+  header: |
+    ## FlowTest {{ .Tag }}
+    
+    **Full Changelog**: https://github.com/radhe-singh/flowtest/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+# Homebrew tap
+brews:
+  - repository:
+      owner: radhe-singh
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    folder: Formula
+    homepage: https://github.com/radhe-singh/flowtest
+    description: "Declarative backend integration testing - YAML-driven test flows"
+    license: MIT
+    test: |
+      system "#{bin}/flowtest", "--version"
+    install: |
+      bin.install "flowtest"
+      (etc/"flowtest").install "flowtest.yaml"
+      (prefix/"flows").install Dir["flows/*.yaml"]
+
+# Scoop manifest for Windows
+scoop:
+  bucket:
+    owner: radhe-singh
+    name: scoop-bucket
+    token: "{{ .Env.SCOOP_GITHUB_TOKEN }}"
+  homepage: https://github.com/radhe-singh/flowtest
+  description: "Declarative backend integration testing - YAML-driven test flows"
+  license: MIT
+
+# Docker images
+dockers:
+  - image_templates:
+      - "ghcr.io/radhe-singh/flowtest:{{ .Tag }}-amd64"
+      - "ghcr.io/radhe-singh/flowtest:latest-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    goos: linux
+    goarch: amd64
+
+  - image_templates:
+      - "ghcr.io/radhe-singh/flowtest:{{ .Tag }}-arm64"
+      - "ghcr.io/radhe-singh/flowtest:latest-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    goos: linux
+    goarch: arm64
+
+docker_manifests:
+  - name_template: "ghcr.io/radhe-singh/flowtest:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/radhe-singh/flowtest:{{ .Tag }}-amd64"
+      - "ghcr.io/radhe-singh/flowtest:{{ .Tag }}-arm64"
+
+  - name_template: "ghcr.io/radhe-singh/flowtest:latest"
+    image_templates:
+      - "ghcr.io/radhe-singh/flowtest:latest-amd64"
+      - "ghcr.io/radhe-singh/flowtest:latest-arm64"
+
+nfpms:
+  - id: flowtest
+    package_name: flowtest
+    homepage: https://github.com/radhe-singh/flowtest
+    description: "Declarative backend integration testing - YAML-driven test flows"
+    maintainer: Radhe Singh <radhe.singh@example.com>
+    license: MIT
+    vendor: FlowTest
+    formats:
+      - deb
+      - rpm
+      - apk
+    bindir: /usr/bin
+    contents:
+      - src: flowtest.yaml
+        dst: /etc/flowtest/flowtest.yaml
+        type: config
+      - src: flows/*.yaml
+        dst: /usr/share/flowtest/examples/

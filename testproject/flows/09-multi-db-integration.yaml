@@ -1,0 +1,201 @@
+name: Multi-Database Integration
+description: Cross-database flow — writes to Postgres, MySQL, MongoDB, SQLite and verifies all four
+timeout: 30s
+fail_fast: true
+
+setup:
+  - db:
+      query: "DELETE FROM users WHERE email = 'multidb@test.com'"
+  - mysql_db:
+      query: "DELETE FROM analytics WHERE event_type LIKE 'multidb.%'"
+  - mongo_db:
+      collection: audit_log
+      operation: deleteMany
+      filter: { source: "multidb-test" }
+  - local:
+      query: "CREATE TABLE IF NOT EXISTS sync_log (id INTEGER PRIMARY KEY AUTOINCREMENT, entity TEXT NOT NULL, entity_id TEXT NOT NULL, database_name TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))"
+  - local:
+      query: "DELETE FROM sync_log WHERE entity = 'user'"
+
+cleanup:
+  - db:
+      query: "DELETE FROM users WHERE email = 'multidb@test.com'"
+  - mysql_db:
+      query: "DELETE FROM analytics WHERE event_type LIKE 'multidb.%'"
+  - mongo_db:
+      collection: audit_log
+      operation: deleteMany
+      filter: { source: "multidb-test" }
+  - local:
+      query: "DELETE FROM sync_log WHERE entity = 'user'"
+
+steps:
+  # --- Create user in Postgres ---
+  - name: "Postgres — Create User"
+    db:
+      query: "INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING id, email"
+      params:
+        - multidb@test.com
+        - MultiDB Test User
+        - admin
+    assert:
+      - expr: "row_count == 1"
+    save:
+      pg_user_id: rows[0].id
+      user_email: rows[0].email
+
+  # --- Log analytics in MySQL ---
+  - name: "MySQL — Log User Creation"
+    mysql_db:
+      query: "INSERT INTO analytics (event_type, source, metadata) VALUES (?, ?, ?)"
+      params:
+        - multidb.user.created
+        - postgres
+        - '{"user_email": "multidb@test.com"}'
+
+  # --- Audit in MongoDB ---
+  - name: "MongoDB — Audit User Creation"
+    mongo_db:
+      collection: audit_log
+      operation: insertOne
+      document:
+        action: user.created
+        entity: user
+        entity_id: "${pg_user_id}"
+        email: "${user_email}"
+        source: multidb-test
+    assert:
+      - expr: "row_count == 1"
+    save:
+      audit_id: rows[0]._id
+
+  # --- Track in SQLite ---
+  - name: "SQLite — Record Sync Log"
+    local:
+      query: "INSERT INTO sync_log (entity, entity_id, database_name, action) VALUES (?, ?, ?, ?)"
+      params:
+        - user
+        - "${pg_user_id}"
+        - "multidb-postgres"
+        - created
+
+  # --- Verify Postgres ---
+  - name: "Postgres — Verify User"
+    db:
+      query: "SELECT id, email, role FROM users WHERE email = $1"
+      params:
+        - multidb@test.com
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].email == 'multidb@test.com'"
+      - expr: "rows[0].role == 'admin'"
+
+  # --- Verify MySQL ---
+  - name: "MySQL — Verify Analytics"
+    mysql_db:
+      query: "SELECT event_type, source FROM analytics WHERE event_type = ?"
+      params:
+        - multidb.user.created
+    assert:
+      - expr: "row_count >= 1"
+      - expr: "rows[0].event_type == 'multidb.user.created'"
+      - expr: "rows[0].source == 'postgres'"
+
+  # --- Verify MongoDB ---
+  - name: "MongoDB — Verify Audit Log"
+    mongo_db:
+      collection: audit_log
+      operation: findOne
+      filter:
+        action: user.created
+        source: multidb-test
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].email == 'multidb@test.com'"
+      - expr: "rows[0].action == 'user.created'"
+
+  # --- Verify SQLite ---
+  - name: "SQLite — Verify Sync Log"
+    local:
+      query: "SELECT entity, entity_id, database_name, action FROM sync_log WHERE entity = ? AND database_name = ?"
+      params:
+        - user
+        - "multidb-postgres"
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].action == 'created'"
+      - expr: "rows[0].entity == 'user'"
+
+  # --- Update user in Postgres ---
+  - name: "Postgres — Update Role"
+    db:
+      query: "UPDATE users SET role = $1 WHERE email = $2 RETURNING role"
+      params:
+        - superadmin
+        - multidb@test.com
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].role == 'superadmin'"
+
+  # --- Log update in MySQL ---
+  - name: "MySQL — Log Role Change"
+    mysql_db:
+      query: "INSERT INTO analytics (event_type, source, metadata) VALUES (?, ?, ?)"
+      params:
+        - multidb.user.role_changed
+        - postgres
+        - '{"new_role": "superadmin"}'
+
+  # --- Audit update in MongoDB ---
+  - name: "MongoDB — Audit Role Change"
+    mongo_db:
+      collection: audit_log
+      operation: insertOne
+      document:
+        action: user.role_changed
+        entity: user
+        entity_id: "${pg_user_id}"
+        old_role: admin
+        new_role: superadmin
+        source: multidb-test
+    assert:
+      - expr: "row_count == 1"
+
+  # --- Track update in SQLite ---
+  - name: "SQLite — Record Update Sync"
+    local:
+      query: "INSERT INTO sync_log (entity, entity_id, database_name, action) VALUES (?, ?, ?, ?)"
+      params:
+        - user
+        - "${pg_user_id}"
+        - "multidb-postgres"
+        - role_changed
+
+  # --- Verify full sync history in SQLite ---
+  - name: "SQLite — Verify Full History"
+    local:
+      query: "SELECT action FROM sync_log WHERE entity = ? ORDER BY id"
+      params:
+        - user
+    assert:
+      - expr: "row_count == 2"
+        msg: "Should have both create and update entries"
+      - expr: "rows[0].action == 'created'"
+      - expr: "rows[1].action == 'role_changed'"
+
+  # --- Verify all audits in MongoDB ---
+  - name: "MongoDB — Count All Audits"
+    mongo_db:
+      collection: audit_log
+      operation: countDocuments
+      filter:
+        source: multidb-test
+    assert:
+      - expr: "row_count == 2"
+        msg: "Should have 2 audit entries"
+
+  # --- Summary ---
+  - name: "Multi-DB summary"
+    script:
+      run: echo "Multi-DB integration passed. PG user=${pg_user_id}, Audit=${audit_id}"
+      assert_exit: 0

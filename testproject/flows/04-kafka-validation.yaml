@@ -1,0 +1,100 @@
+name: Kafka Validation
+description: Tests Kafka event production — create/update/delete item, verify events on topics
+timeout: 60s
+
+cleanup:
+  - db:
+      query: "DELETE FROM items WHERE name LIKE 'Kafka%'"
+
+steps:
+  # --- Create item (produces to item.created) ---
+  - name: "POST /items — Create for Kafka Test"
+    api:
+      method: POST
+      url: /items
+      body:
+        name: "Kafka Test Item"
+        description: "Item to test Kafka events"
+        price: 77.77
+    assert:
+      - expr: "response.status == 201"
+    save:
+      item_id: response.body.id
+
+  # --- Verify item.created event ---
+  - name: "Kafka — Verify item.created event"
+    kafka:
+      topic: item.created
+      timeout: 15s
+      match:
+        name: "Kafka Test Item"
+    assert:
+      - expr: "message.payload.name == 'Kafka Test Item'"
+      - expr: "message.payload.price == 77.77"
+      - expr: "message.payload.status == 'active'"
+      - expr: "message.topic == 'item.created'"
+
+  # --- Update item (produces to item.updated) ---
+  - name: "PUT /items/{id} — Update for Kafka Test"
+    api:
+      method: PUT
+      url: /items/${item_id}
+      body:
+        name: "Kafka Test Item Updated"
+        description: "Updated for event test"
+        price: 88.88
+        status: "active"
+    assert:
+      - expr: "response.status == 200"
+
+  # --- Verify item.updated event ---
+  - name: "Kafka — Verify item.updated event"
+    kafka:
+      topic: item.updated
+      timeout: 10s
+      match:
+        name: "Kafka Test Item Updated"
+    assert:
+      - expr: "message.payload.name == 'Kafka Test Item Updated'"
+      - expr: "message.payload.price == 88.88"
+      - expr: "message.topic == 'item.updated'"
+
+  # --- Patch item (produces to item.patched) ---
+  - name: "PATCH /items/{id} — Patch for Kafka Test"
+    api:
+      method: PATCH
+      url: /items/${item_id}
+      body:
+        status: "archived"
+    assert:
+      - expr: "response.status == 200"
+
+  # --- Verify item.patched event ---
+  - name: "Kafka — Verify item.patched event"
+    kafka:
+      topic: item.patched
+      timeout: 10s
+      match:
+        status: "archived"
+    assert:
+      - expr: "message.payload.status == 'archived'"
+      - expr: "message.topic == 'item.patched'"
+
+  # --- Delete item (produces to item.deleted) ---
+  - name: "DELETE /items/{id} — Delete for Kafka Test"
+    api:
+      method: DELETE
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 200"
+
+  # --- Verify item.deleted event ---
+  - name: "Kafka — Verify item.deleted event"
+    kafka:
+      topic: item.deleted
+      timeout: 10s
+      match:
+        id: ${item_id}
+    assert:
+      - expr: "message.topic == 'item.deleted'"
+      - expr: "message.payload.id == item_id"

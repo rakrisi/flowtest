@@ -1,0 +1,233 @@
+name: Auth Validation
+description: Tests bearer, basic, and API key authentication
+
+steps:
+  # ============================================================================
+  # Bearer Token Authentication
+  # ============================================================================
+
+  - name: Bearer auth - valid token
+    api:
+      method: GET
+      url: /auth/bearer
+      auth:
+        bearer: test-bearer-token-12345
+    assert:
+      - expr: "response.status == 200"
+        msg: "Expected 200 for valid bearer token"
+      - expr: "response.body.authenticated == true"
+        msg: "Expected authenticated to be true"
+      - expr: "response.body.auth_type == 'bearer'"
+        msg: "Expected auth_type to be 'bearer'"
+
+  - name: Bearer auth - invalid token
+    api:
+      method: GET
+      url: /auth/bearer
+      auth:
+        bearer: invalid-token
+    assert:
+      - expr: "response.status == 401"
+        msg: "Expected 401 for invalid bearer token"
+      - expr: "response.body.error == 'invalid bearer token'"
+        msg: "Expected error message for invalid token"
+
+  - name: Bearer auth - missing token
+    api:
+      method: GET
+      url: /auth/bearer
+    assert:
+      - expr: "response.status == 401"
+        msg: "Expected 401 when no auth provided"
+      - expr: "response.body.error == 'missing Authorization header'"
+        msg: "Expected error about missing header"
+
+  # ============================================================================
+  # Basic Authentication
+  # ============================================================================
+
+  - name: Basic auth - valid credentials
+    api:
+      method: GET
+      url: /auth/basic
+      auth:
+        basic:
+          username: testuser
+          password: testpassword
+    assert:
+      - expr: "response.status == 200"
+        msg: "Expected 200 for valid basic auth"
+      - expr: "response.body.authenticated == true"
+        msg: "Expected authenticated to be true"
+      - expr: "response.body.auth_type == 'basic'"
+        msg: "Expected auth_type to be 'basic'"
+      - expr: "response.body.username == 'testuser'"
+        msg: "Expected username to be returned"
+
+  - name: Basic auth - invalid password
+    api:
+      method: GET
+      url: /auth/basic
+      auth:
+        basic:
+          username: testuser
+          password: wrongpassword
+    assert:
+      - expr: "response.status == 401"
+        msg: "Expected 401 for wrong password"
+      - expr: "response.body.error == 'invalid username or password'"
+        msg: "Expected error message for invalid credentials"
+
+  - name: Basic auth - missing credentials
+    api:
+      method: GET
+      url: /auth/basic
+    assert:
+      - expr: "response.status == 401"
+        msg: "Expected 401 when no auth provided"
+
+  # ============================================================================
+  # API Key Authentication (Header)
+  # ============================================================================
+
+  - name: API key auth - valid key in header
+    api:
+      method: GET
+      url: /auth/api-key
+      auth:
+        api_key:
+          header: X-API-Key
+          value: test-api-key-67890
+    assert:
+      - expr: "response.status == 200"
+        msg: "Expected 200 for valid API key"
+      - expr: "response.body.authenticated == true"
+        msg: "Expected authenticated to be true"
+      - expr: "response.body.auth_type == 'api_key'"
+        msg: "Expected auth_type to be 'api_key'"
+      - expr: "response.body.key_source == 'header'"
+        msg: "Expected key_source to be 'header'"
+
+  - name: API key auth - invalid key in header
+    api:
+      method: GET
+      url: /auth/api-key
+      auth:
+        api_key:
+          header: X-API-Key
+          value: wrong-api-key
+    assert:
+      - expr: "response.status == 401"
+        msg: "Expected 401 for invalid API key"
+      - expr: "response.body.error == 'invalid API key'"
+        msg: "Expected error message for invalid key"
+
+  # ============================================================================
+  # API Key Authentication (Query Parameter)
+  # ============================================================================
+
+  - name: API key auth - valid key in query param
+    api:
+      method: GET
+      url: /auth/api-key
+      auth:
+        api_key:
+          query: api_key
+          value: test-api-key-67890
+    assert:
+      - expr: "response.status == 200"
+        msg: "Expected 200 for valid API key in query"
+      - expr: "response.body.authenticated == true"
+        msg: "Expected authenticated to be true"
+      - expr: "response.body.key_source == 'query'"
+        msg: "Expected key_source to be 'query'"
+
+  - name: API key auth - invalid key in query param
+    api:
+      method: GET
+      url: /auth/api-key
+      auth:
+        api_key:
+          query: api_key
+          value: wrong-api-key
+    assert:
+      - expr: "response.status == 401"
+        msg: "Expected 401 for invalid API key in query"
+
+  - name: API key auth - missing key
+    api:
+      method: GET
+      url: /auth/api-key
+    assert:
+      - expr: "response.status == 401"
+        msg: "Expected 401 when no API key provided"
+
+  # ============================================================================
+  # Auth with Variable Interpolation (Common Use Case)
+  # ============================================================================
+
+  - name: Save token for later use
+    script:
+      run: printf "test-bearer-token-12345"
+      assert_exit: 0
+    save:
+      saved_token: stdout
+
+  - name: Bearer auth with variable
+    api:
+      method: GET
+      url: /auth/bearer
+      auth:
+        bearer: ${saved_token}
+    assert:
+      - expr: "response.status == 200"
+        msg: "Expected 200 for bearer token from variable"
+      - expr: "response.body.authenticated == true"
+
+  # ============================================================================
+  # POST with Auth (Body + Auth)
+  # ============================================================================
+
+  - name: POST with bearer auth
+    api:
+      method: POST
+      url: /auth/bearer
+      auth:
+        bearer: test-bearer-token-12345
+      body:
+        test_data: "some payload"
+    assert:
+      - expr: "response.status == 200"
+        msg: "POST with bearer auth should work"
+      - expr: "response.body.authenticated == true"
+
+  - name: POST with basic auth
+    api:
+      method: POST
+      url: /auth/basic
+      auth:
+        basic:
+          username: testuser
+          password: testpassword
+      body:
+        action: "test"
+    assert:
+      - expr: "response.status == 200"
+        msg: "POST with basic auth should work"
+
+  # ============================================================================
+  # Custom Headers Combined with Auth
+  # ============================================================================
+
+  - name: Auth combined with custom headers
+    api:
+      method: GET
+      url: /auth/bearer
+      auth:
+        bearer: test-bearer-token-12345
+      headers:
+        X-Custom-Header: custom-value
+        Accept: application/json
+    assert:
+      - expr: "response.status == 200"
+        msg: "Auth should work with custom headers"

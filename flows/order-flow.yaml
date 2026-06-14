@@ -1,0 +1,93 @@
+name: Order Flow
+description: Tests full order creation lifecycle (DB seed -> API -> Kafka -> Redis -> DB verify)
+timeout: 30s
+
+env:
+  api_base: http://localhost:8000
+  db: postgres://user:pass@localhost:5432/app
+  kafka_brokers: localhost:9092
+  redis: redis://localhost:6379
+
+setup:
+  - seed:
+      table: users
+      data:
+        id: 1
+        email: test@mail.com
+        role: customer
+
+cleanup:
+  - db:
+      query: "DELETE FROM orders WHERE user_id = 1"
+  - db:
+      query: "DELETE FROM users WHERE id = 1"
+
+steps:
+  - name: Login
+    api:
+      method: POST
+      url: /login
+      body:
+        email: test@mail.com
+        password: "123456"
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.token != ''"
+        msg: "Token should not be empty"
+    save:
+      token: response.body.token
+      user_id: response.body.user.id
+
+  - name: Create Order
+    api:
+      method: POST
+      url: /orders
+      headers:
+        Authorization: "Bearer ${token}"
+      body:
+        user_id: ${user_id}
+        items:
+          - sku: "ITEM-1"
+            qty: 2
+    assert:
+      - expr: "response.status == 201"
+      - expr: "response.body.total > 0"
+    save:
+      order_id: response.body.id
+
+  - name: Verify Kafka Event
+    kafka:
+      topic: order.created
+      timeout: 5s
+      match:
+        order_id: ${order_id}
+    assert:
+      - expr: "message.payload.status == 'created'"
+      - expr: "message.payload.user_id == user_id"
+    save:
+      event_ts: message.timestamp
+
+  - name: Verify Redis Cache
+    redis:
+      action: get
+      key: "order:${order_id}"
+    assert:
+      - expr: "value.status == 'created'"
+      - expr: "value.total > 0"
+
+  - name: Verify DB State
+    db:
+      query: "SELECT status, total FROM orders WHERE id = $1"
+      params:
+        - ${order_id}
+    assert:
+      - expr: "rows[0].status == 'created'"
+      - expr: "rows[0].total > 0"
+
+  - name: Custom Validation
+    when: "order_id > 1000"
+    script:
+      lang: shell
+      run: |
+        curl -s http://localhost:8000/orders/${order_id}/receipt | jq '.valid'
+      assert_exit: 0

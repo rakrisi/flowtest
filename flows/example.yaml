@@ -1,0 +1,20 @@
+name: Example Flow
+description: A simple example to verify flowtest is working
+timeout: 15s
+
+steps:
+  - name: Health Check
+    api:
+      method: GET
+      url: /health
+    assert:
+      - expr: "response.status == 200"
+        msg: "API should be healthy"
+
+  - name: Echo Test
+    script:
+      run: echo "hello flowtest"
+      assert_exit: 0
+    assert:
+      - expr: "stdout == 'hello flowtest'"
+        msg: "Script should echo correctly"

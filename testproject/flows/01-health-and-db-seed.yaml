@@ -1,0 +1,52 @@
+name: Health Check & DB Seed
+description: Verify API is up, seed users table, verify seed via DB query
+timeout: 15s
+
+setup:
+  - db:
+      query: "DELETE FROM users WHERE email = 'seed-test@example.com'"
+
+cleanup:
+  - db:
+      query: "DELETE FROM users WHERE email = 'seed-test@example.com'"
+
+steps:
+  - name: Health Check
+    api:
+      method: GET
+      url: /health
+    assert:
+      - expr: "response.status == 200"
+        msg: "API should return 200"
+      - expr: "response.body.status == 'ok'"
+        msg: "Health status should be ok"
+
+  - name: Seed User
+    db:
+      query: "INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING id"
+      params:
+        - seed-test@example.com
+        - Seed User
+        - admin
+    assert:
+      - expr: "row_count == 1"
+        msg: "Should insert exactly one user"
+
+  - name: Verify Seeded User
+    db:
+      query: "SELECT id, email, name, role FROM users WHERE email = $1"
+      params:
+        - seed-test@example.com
+    assert:
+      - expr: "row_count == 1"
+        msg: "Should find the seeded user"
+      - expr: "rows[0].email == 'seed-test@example.com'"
+      - expr: "rows[0].name == 'Seed User'"
+      - expr: "rows[0].role == 'admin'"
+    save:
+      seeded_user_id: rows[0].id
+
+  - name: Log Seeded User ID
+    script:
+      run: echo "Seeded user ID = ${seeded_user_id}"
+      assert_exit: 0

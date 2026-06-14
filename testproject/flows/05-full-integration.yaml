@@ -1,0 +1,170 @@
+name: Full Integration Flow
+description: End-to-end — DB seed, API CRUD, Kafka events, Redis cache, DB verify, cleanup
+timeout: 45s
+fail_fast: true
+
+setup:
+  - seed:
+      target: db
+      table: users
+      data:
+        email: integration@test.com
+        name: Integration User
+        role: admin
+
+cleanup:
+  - db:
+      query: "DELETE FROM items WHERE name LIKE 'Integration%'"
+  - db:
+      query: "DELETE FROM users WHERE email = 'integration@test.com'"
+
+steps:
+  # --- Verify seed ---
+  - name: "Verify seeded user in DB"
+    db:
+      query: "SELECT id, email, role FROM users WHERE email = $1"
+      params:
+        - integration@test.com
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].role == 'admin'"
+    save:
+      user_email: rows[0].email
+
+  # --- Create item ---
+  - name: "Create item via API"
+    api:
+      method: POST
+      url: /items
+      body:
+        name: "Integration Test Product"
+        description: "Created by full integration test"
+        price: 100.00
+    assert:
+      - expr: "response.status == 201"
+      - expr: "response.body.id > 0"
+    save:
+      item_id: response.body.id
+
+  # --- Kafka: verify created event ---
+  - name: "Kafka — item.created event received"
+    kafka:
+      topic: item.created
+      timeout: 15s
+      match:
+        name: "Integration Test Product"
+    assert:
+      - expr: "message.payload.price == 100"
+      - expr: "message.payload.status == 'active'"
+
+  # --- Redis: verify cached after GET ---
+  - name: "GET item to trigger cache"
+    api:
+      method: GET
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 200"
+
+  - name: "Redis — verify item cached"
+    redis:
+      action: get
+      key: "item:${item_id}"
+    assert:
+      - expr: "exists == true"
+      - expr: "value.name == 'Integration Test Product'"
+
+  # --- Update via PUT ---
+  - name: "PUT — full update"
+    api:
+      method: PUT
+      url: /items/${item_id}
+      body:
+        name: "Integration Test Product V2"
+        description: "Updated in integration test"
+        price: 150.00
+        status: "active"
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.price == 150"
+
+  # --- Kafka: verify updated event ---
+  - name: "Kafka — item.updated event received"
+    kafka:
+      topic: item.updated
+      timeout: 10s
+      match:
+        name: "Integration Test Product V2"
+    assert:
+      - expr: "message.payload.price == 150"
+
+  # --- Redis: verify updated cache ---
+  - name: "Redis — verify cache updated"
+    redis:
+      action: get
+      key: "item:${item_id}"
+    assert:
+      - expr: "value.name == 'Integration Test Product V2'"
+      - expr: "value.price == 150"
+
+  # --- PATCH status ---
+  - name: "PATCH — archive item"
+    api:
+      method: PATCH
+      url: /items/${item_id}
+      body:
+        status: "archived"
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.status == 'archived'"
+
+  # --- DB: verify state after PATCH ---
+  - name: "DB — verify item state"
+    db:
+      query: "SELECT name, price, status FROM items WHERE id = $1"
+      params:
+        - ${item_id}
+    assert:
+      - expr: "rows[0].name == 'Integration Test Product V2'"
+      - expr: "rows[0].status == 'archived'"
+
+  # --- Delete ---
+  - name: "DELETE item"
+    api:
+      method: DELETE
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.deleted == true"
+
+  # --- Kafka: verify deleted event ---
+  - name: "Kafka — item.deleted event received"
+    kafka:
+      topic: item.deleted
+      timeout: 10s
+      match:
+        id: ${item_id}
+    assert:
+      - expr: "message.payload.id == item_id"
+
+  # --- Redis: verify cache cleared ---
+  - name: "Redis — cache cleared after delete"
+    redis:
+      action: exists
+      key: "item:${item_id}"
+    assert:
+      - expr: "exists == false"
+
+  # --- DB: verify gone ---
+  - name: "DB — item removed"
+    db:
+      query: "SELECT id FROM items WHERE id = $1"
+      params:
+        - ${item_id}
+    assert:
+      - expr: "row_count == 0"
+
+  # --- Script: summary ---
+  - name: "Print summary"
+    script:
+      run: echo "Full integration test passed for item ${item_id}"
+      assert_exit: 0

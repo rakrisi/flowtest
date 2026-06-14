@@ -1,0 +1,22 @@
+# Binary
+flowtest
+testproject/testserver
+
+# Environment
+*.env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test artifacts
+*.log
+coverage.out

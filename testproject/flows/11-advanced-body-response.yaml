@@ -1,0 +1,326 @@
+name: Advanced Body and Response Validation
+description: Tests advanced body structures - arrays, nested objects, variable interpolation
+
+steps:
+  # ============================================================================
+  # Simple Nested Object
+  # ============================================================================
+
+  - name: Simple nested object body
+    api:
+      method: POST
+      url: /echo
+      body:
+        user:
+          name: John Doe
+          email: john@example.com
+          age: 30
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.body.user.name == 'John Doe'"
+        msg: "Nested user.name should be preserved"
+      - expr: "response.body.body.user.email == 'john@example.com'"
+        msg: "Nested user.email should be preserved"
+      - expr: "response.body.body.user.age == 30"
+        msg: "Nested user.age should be preserved"
+    save:
+      user_name: response.body.body.user.name
+      user_email: response.body.body.user.email
+
+  # ============================================================================
+  # Array Body
+  # ============================================================================
+
+  - name: Simple array body
+    api:
+      method: POST
+      url: /echo
+      body:
+        - apple
+        - banana
+        - cherry
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.body[0] == 'apple'"
+        msg: "First array element should be 'apple'"
+      - expr: "response.body.body[1] == 'banana'"
+        msg: "Second array element should be 'banana'"
+      - expr: "response.body.body[2] == 'cherry'"
+        msg: "Third array element should be 'cherry'"
+      - expr: "len(response.body.body) == 3"
+        msg: "Array should have 3 elements"
+
+  # ============================================================================
+  # Array of Objects
+  # ============================================================================
+
+  - name: Array of objects body
+    api:
+      method: POST
+      url: /echo
+      body:
+        items:
+          - id: 1
+            name: Item One
+            price: 10.99
+          - id: 2
+            name: Item Two
+            price: 20.50
+          - id: 3
+            name: Item Three
+            price: 30.00
+    assert:
+      - expr: "response.status == 200"
+      - expr: "len(response.body.body.items) == 3"
+        msg: "Should have 3 items"
+      - expr: "response.body.body.items[0].id == 1"
+        msg: "First item id should be 1"
+      - expr: "response.body.body.items[0].name == 'Item One'"
+        msg: "First item name should be 'Item One'"
+      - expr: "response.body.body.items[1].price == 20.50"
+        msg: "Second item price should be 20.50"
+      - expr: "response.body.body.items[2].id == 3"
+        msg: "Third item id should be 3"
+    save:
+      first_item_name: response.body.body.items[0].name
+      second_item_price: response.body.body.items[1].price
+      total_item_count: response.body.body.items
+
+  # ============================================================================
+  # Multi-Level Nested Structure
+  # ============================================================================
+
+  - name: Multi-level nested structure
+    api:
+      method: POST
+      url: /echo
+      body:
+        order:
+          id: ORD-12345
+          customer:
+            id: CUST-001
+            name: Jane Smith
+            address:
+              street: 123 Main St
+              city: New York
+              country: USA
+              zip: "10001"
+          items:
+            - product:
+                id: PROD-A
+                name: Widget
+                category:
+                  id: CAT-1
+                  name: Electronics
+              quantity: 2
+              price: 29.99
+            - product:
+                id: PROD-B
+                name: Gadget
+                category:
+                  id: CAT-2
+                  name: Accessories
+              quantity: 1
+              price: 49.99
+          metadata:
+            source: web
+            ip: 192.168.1.1
+            tags:
+              - urgent
+              - priority
+              - express
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.body.order.id == 'ORD-12345'"
+        msg: "Order ID preserved"
+      - expr: "response.body.body.order.customer.name == 'Jane Smith'"
+        msg: "Customer name preserved (2 levels deep)"
+      - expr: "response.body.body.order.customer.address.city == 'New York'"
+        msg: "Address city preserved (3 levels deep)"
+      - expr: "response.body.body.order.customer.address.zip == '10001'"
+        msg: "Address zip preserved as string"
+      - expr: "response.body.body.order.items[0].product.name == 'Widget'"
+        msg: "First item product name preserved"
+      - expr: "response.body.body.order.items[0].product.category.name == 'Electronics'"
+        msg: "Category name preserved (4 levels deep)"
+      - expr: "response.body.body.order.items[1].quantity == 1"
+        msg: "Second item quantity preserved"
+      - expr: "len(response.body.body.order.metadata.tags) == 3"
+        msg: "Tags array has 3 elements"
+      - expr: "response.body.body.order.metadata.tags[0] == 'urgent'"
+        msg: "First tag is 'urgent'"
+    save:
+      order_id: response.body.body.order.id
+      customer_city: response.body.body.order.customer.address.city
+      first_product: response.body.body.order.items[0].product.name
+
+  # ============================================================================
+  # Variable Interpolation in Nested Structures
+  # ============================================================================
+
+  - name: Variable interpolation in nested body
+    api:
+      method: POST
+      url: /echo
+      body:
+        request_type: order_update
+        reference:
+          order_id: ${order_id}
+          customer_location: ${customer_city}
+          product_name: ${first_product}
+        user:
+          name: ${user_name}
+          email: ${user_email}
+        pricing:
+          item_name: ${first_item_name}
+          base_price: ${second_item_price}
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.body.reference.order_id == 'ORD-12345'"
+        msg: "order_id variable interpolated correctly"
+      - expr: "response.body.body.reference.customer_location == 'New York'"
+        msg: "customer_city variable interpolated correctly"
+      - expr: "response.body.body.reference.product_name == 'Widget'"
+        msg: "first_product variable interpolated correctly"
+      - expr: "response.body.body.user.name == 'John Doe'"
+        msg: "user_name from earlier step interpolated"
+      - expr: "response.body.body.user.email == 'john@example.com'"
+        msg: "user_email from earlier step interpolated"
+      - expr: "response.body.body.pricing.item_name == 'Item One'"
+        msg: "Array element variable interpolated"
+      - expr: "response.body.body.pricing.base_price == '20.5'"
+        msg: "Numeric variable interpolated correctly"
+
+  # ============================================================================
+  # Custom Headers
+  # ============================================================================
+
+  - name: Custom headers test
+    api:
+      method: POST
+      url: /echo
+      headers:
+        X-Request-ID: req-123-abc
+        X-Correlation-ID: corr-456-def
+        X-Custom-Header: custom-value
+        Accept: application/json
+        X-API-Version: v2
+      body:
+        message: testing headers
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.headers['X-Request-Id'] == 'req-123-abc'"
+        msg: "X-Request-ID header received"
+      - expr: "response.body.headers['X-Correlation-Id'] == 'corr-456-def'"
+        msg: "X-Correlation-ID header received"
+      - expr: "response.body.headers['X-Custom-Header'] == 'custom-value'"
+        msg: "X-Custom-Header received"
+      - expr: "response.body.headers['X-Api-Version'] == 'v2'"
+        msg: "X-API-Version header received"
+    save:
+      request_id: response.body.headers['X-Request-Id']
+
+  # ============================================================================
+  # Headers with Variable Interpolation
+  # ============================================================================
+
+  - name: Headers with variable interpolation
+    api:
+      method: POST
+      url: /echo
+      headers:
+        X-Previous-Request: ${request_id}
+        X-Order-Reference: ${order_id}
+        X-User-Email: ${user_email}
+      body:
+        trace: header_test
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.headers['X-Previous-Request'] == 'req-123-abc'"
+        msg: "Interpolated request_id in header"
+      - expr: "response.body.headers['X-Order-Reference'] == 'ORD-12345'"
+        msg: "Interpolated order_id in header"
+      - expr: "response.body.headers['X-User-Email'] == 'john@example.com'"
+        msg: "Interpolated user_email in header"
+
+  # ============================================================================
+  # Mixed Types in Body
+  # ============================================================================
+
+  - name: Mixed types in body
+    api:
+      method: POST
+      url: /echo
+      body:
+        string_field: hello world
+        integer_field: 42
+        float_field: 3.14159
+        boolean_true: true
+        boolean_false: false
+        null_field: null
+        nested_array:
+          - 1
+          - two
+          - 3.0
+          - true
+          - null
+        mixed_object:
+          count: 100
+          label: test
+          active: true
+          ratio: 0.75
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.body.string_field == 'hello world'"
+      - expr: "response.body.body.integer_field == 42"
+      - expr: "response.body.body.float_field == 3.14159"
+      - expr: "response.body.body.boolean_true == true"
+      - expr: "response.body.body.boolean_false == false"
+      - expr: "response.body.body.null_field == nil"
+      - expr: "response.body.body.nested_array[0] == 1"
+      - expr: "response.body.body.nested_array[1] == 'two'"
+      - expr: "response.body.body.nested_array[3] == true"
+      - expr: "response.body.body.mixed_object.count == 100"
+      - expr: "response.body.body.mixed_object.active == true"
+
+  # ============================================================================
+  # Auth + Headers + Advanced Body Combined
+  # ============================================================================
+
+  - name: Combined auth, headers, and advanced body
+    api:
+      method: POST
+      url: /echo
+      auth:
+        bearer: test-bearer-token-12345
+      headers:
+        X-Request-ID: combined-test-001
+        X-Trace-ID: trace-${order_id}
+      body:
+        operation: create_order
+        data:
+          order:
+            reference: ${order_id}
+            items:
+              - name: ${first_product}
+                qty: 5
+              - name: Another Item
+                qty: 10
+            shipping:
+              address:
+                city: ${customer_city}
+                recipient: ${user_name}
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.headers['Authorization'] == 'Bearer test-bearer-token-12345'"
+        msg: "Bearer auth header present"
+      - expr: "response.body.headers['X-Request-Id'] == 'combined-test-001'"
+        msg: "Custom header present"
+      - expr: "response.body.headers['X-Trace-Id'] == 'trace-ORD-12345'"
+        msg: "Header with interpolated variable"
+      - expr: "response.body.body.data.order.reference == 'ORD-12345'"
+        msg: "Nested body with interpolated variable"
+      - expr: "response.body.body.data.order.items[0].name == 'Widget'"
+        msg: "Array item with interpolated variable"
+      - expr: "response.body.body.data.order.shipping.address.city == 'New York'"
+        msg: "Deeply nested interpolated variable"

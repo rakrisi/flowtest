@@ -1,0 +1,128 @@
+name: MySQL Validation
+description: Tests MySQL CRUD via direct database queries
+timeout: 20s
+
+setup:
+  - mysql_db:
+      query: "DELETE FROM items WHERE name LIKE 'MySQL%'"
+  - mysql_db:
+      query: "DELETE FROM users WHERE email LIKE '%mysql-test%'"
+  - mysql_db:
+      query: "DELETE FROM analytics WHERE event_type LIKE 'flowtest%'"
+
+cleanup:
+  - mysql_db:
+      query: "DELETE FROM items WHERE name LIKE 'MySQL%'"
+  - mysql_db:
+      query: "DELETE FROM users WHERE email LIKE '%mysql-test%'"
+  - mysql_db:
+      query: "DELETE FROM analytics WHERE event_type LIKE 'flowtest%'"
+
+steps:
+  # --- INSERT user ---
+  - name: "MySQL — Insert User"
+    mysql_db:
+      query: "INSERT INTO users (email, name, role) VALUES (?, ?, ?)"
+      params:
+        - mysql-test@example.com
+        - MySQL Test User
+        - admin
+
+  # --- Verify user inserted ---
+  - name: "MySQL — Verify User"
+    mysql_db:
+      query: "SELECT id, email, name, role FROM users WHERE email = ?"
+      params:
+        - mysql-test@example.com
+    assert:
+      - expr: "row_count == 1"
+        msg: "Should find the inserted user"
+      - expr: "rows[0].email == 'mysql-test@example.com'"
+      - expr: "rows[0].name == 'MySQL Test User'"
+      - expr: "rows[0].role == 'admin'"
+    save:
+      mysql_user_id: rows[0].id
+
+  # --- INSERT item ---
+  - name: "MySQL — Insert Item"
+    mysql_db:
+      query: "INSERT INTO items (name, description, price) VALUES (?, ?, ?)"
+      params:
+        - MySQL Test Widget
+        - Created by flowtest MySQL validation
+        - 42.50
+
+  # --- SELECT item ---
+  - name: "MySQL — Query Item"
+    mysql_db:
+      query: "SELECT id, name, description, price, status FROM items WHERE name = ?"
+      params:
+        - MySQL Test Widget
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].name == 'MySQL Test Widget'"
+      - expr: "rows[0].status == 'active'"
+    save:
+      mysql_item_id: rows[0].id
+
+  # --- UPDATE item ---
+  - name: "MySQL — Update Item Price"
+    mysql_db:
+      query: "UPDATE items SET price = ?, status = ? WHERE name = ?"
+      params:
+        - 55.00
+        - updated
+        - MySQL Test Widget
+
+  # --- Verify UPDATE ---
+  - name: "MySQL — Verify Update"
+    mysql_db:
+      query: "SELECT price, status FROM items WHERE name = ?"
+      params:
+        - MySQL Test Widget
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].status == 'updated'"
+
+  # --- INSERT analytics ---
+  - name: "MySQL — Insert Analytics Event"
+    mysql_db:
+      query: "INSERT INTO analytics (event_type, source, metadata) VALUES (?, ?, ?)"
+      params:
+        - flowtest.mysql.validation
+        - test-runner
+        - '{"run": "06"}'
+
+  # --- Query analytics ---
+  - name: "MySQL — Query Analytics"
+    mysql_db:
+      query: "SELECT event_type, source FROM analytics WHERE event_type = ?"
+      params:
+        - flowtest.mysql.validation
+    assert:
+      - expr: "row_count >= 1"
+      - expr: "rows[0].event_type == 'flowtest.mysql.validation'"
+      - expr: "rows[0].source == 'test-runner'"
+
+  # --- DELETE item ---
+  - name: "MySQL — Delete Item"
+    mysql_db:
+      query: "DELETE FROM items WHERE name = ?"
+      params:
+        - MySQL Test Widget
+
+  # --- Verify DELETE ---
+  - name: "MySQL — Verify Item Deleted"
+    mysql_db:
+      query: "SELECT id FROM items WHERE name = ?"
+      params:
+        - MySQL Test Widget
+    assert:
+      - expr: "row_count == 0"
+        msg: "Item should be gone after DELETE"
+
+  # --- Summary ---
+  - name: "MySQL validation summary"
+    script:
+      run: echo "MySQL validation passed. User ID=${mysql_user_id}, Item ID=${mysql_item_id}"
+      assert_exit: 0

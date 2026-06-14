@@ -1,0 +1,13 @@
+# FlowTest global configuration
+# Connection strings and environment settings
+
+env:
+  api_base: http://localhost:8000
+  # db: postgres://user:pass@localhost:5432/app
+  # kafka_brokers: localhost:9092
+  # redis: redis://localhost:6379
+
+# profiles:
+#   staging:
+#     api_base: https://staging.api.example.com
+#     db: postgres://user:pass@staging-db:5432/app

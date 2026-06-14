@@ -1,0 +1,131 @@
+name: SQLite Validation
+description: Tests SQLite operations via direct DB queries — file-based, no container needed
+timeout: 15s
+
+setup:
+  - local:
+      query: "CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, ttl INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"
+  - local:
+      query: "CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, value TEXT NOT NULL)"
+  - local:
+      query: "DELETE FROM cache WHERE key LIKE 'flowtest:%'"
+  - local:
+      query: "DELETE FROM settings WHERE name LIKE 'flowtest.%'"
+
+cleanup:
+  - local:
+      query: "DELETE FROM cache WHERE key LIKE 'flowtest:%'"
+  - local:
+      query: "DELETE FROM settings WHERE name LIKE 'flowtest.%'"
+
+steps:
+  # --- INSERT cache entry ---
+  - name: "SQLite — Insert Cache Entry"
+    local:
+      query: "INSERT INTO cache (key, value, ttl) VALUES (?, ?, ?)"
+      params:
+        - "flowtest:session:abc123"
+        - '{"user": "test-user", "role": "admin"}'
+        - 3600
+
+  # --- SELECT cache entry ---
+  - name: "SQLite — Query Cache Entry"
+    local:
+      query: "SELECT key, value, ttl FROM cache WHERE key = ?"
+      params:
+        - "flowtest:session:abc123"
+    assert:
+      - expr: "row_count == 1"
+        msg: "Should find the cache entry"
+      - expr: "rows[0].key == 'flowtest:session:abc123'"
+      - expr: "rows[0].ttl == 3600"
+    save:
+      cached_value: rows[0].value
+
+  # --- INSERT settings ---
+  - name: "SQLite — Insert Theme Setting"
+    local:
+      query: "INSERT INTO settings (name, value) VALUES (?, ?)"
+      params:
+        - "flowtest.theme"
+        - "dark"
+
+  - name: "SQLite — Insert Locale Setting"
+    local:
+      query: "INSERT INTO settings (name, value) VALUES (?, ?)"
+      params:
+        - "flowtest.locale"
+        - "en-US"
+
+  # --- Query multiple settings ---
+  - name: "SQLite — Query Settings"
+    local:
+      query: "SELECT name, value FROM settings WHERE name LIKE ? ORDER BY name"
+      params:
+        - "flowtest.%"
+    assert:
+      - expr: "row_count == 2"
+        msg: "Should find both settings"
+      - expr: "rows[0].name == 'flowtest.locale'"
+      - expr: "rows[0].value == 'en-US'"
+      - expr: "rows[1].name == 'flowtest.theme'"
+      - expr: "rows[1].value == 'dark'"
+
+  # --- UPDATE setting ---
+  - name: "SQLite — Update Theme"
+    local:
+      query: "UPDATE settings SET value = ? WHERE name = ?"
+      params:
+        - "light"
+        - "flowtest.theme"
+
+  # --- Verify UPDATE ---
+  - name: "SQLite — Verify Theme Updated"
+    local:
+      query: "SELECT value FROM settings WHERE name = ?"
+      params:
+        - "flowtest.theme"
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].value == 'light'"
+
+  # --- UPDATE cache TTL ---
+  - name: "SQLite — Update Cache TTL"
+    local:
+      query: "UPDATE cache SET ttl = ? WHERE key = ?"
+      params:
+        - 7200
+        - "flowtest:session:abc123"
+
+  # --- Verify cache update ---
+  - name: "SQLite — Verify Cache TTL"
+    local:
+      query: "SELECT ttl FROM cache WHERE key = ?"
+      params:
+        - "flowtest:session:abc123"
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].ttl == 7200"
+
+  # --- DELETE cache ---
+  - name: "SQLite — Delete Cache Entry"
+    local:
+      query: "DELETE FROM cache WHERE key = ?"
+      params:
+        - "flowtest:session:abc123"
+
+  # --- Verify DELETE ---
+  - name: "SQLite — Verify Cache Deleted"
+    local:
+      query: "SELECT key FROM cache WHERE key = ?"
+      params:
+        - "flowtest:session:abc123"
+    assert:
+      - expr: "row_count == 0"
+        msg: "Cache entry should be gone"
+
+  # --- Summary ---
+  - name: "SQLite validation summary"
+    script:
+      run: echo "SQLite validation passed. Cached value was ${cached_value}"
+      assert_exit: 0

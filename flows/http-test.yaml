@@ -1,0 +1,37 @@
+name: HTTP Driver Test
+description: Tests HTTP driver with httpbin-style requests
+timeout: 15s
+
+env:
+  api_base: https://httpbin.org
+
+steps:
+  - name: GET Request
+    api:
+      method: GET
+      url: /get
+    assert:
+      - expr: "response.status == 200"
+        msg: "GET should return 200"
+    save:
+      origin: response.body.origin
+
+  - name: POST Request
+    api:
+      method: POST
+      url: /post
+      headers:
+        X-Custom-Header: flowtest
+      body:
+        name: test
+        value: 42
+    assert:
+      - expr: "response.status == 200"
+        msg: "POST should return 200"
+    save:
+      posted_data: response.body.json
+
+  - name: Verify POST Data
+    script:
+      run: echo "name=${posted_data}"
+      assert_exit: 0

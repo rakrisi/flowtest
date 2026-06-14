@@ -1,0 +1,141 @@
+name: API CRUD Operations
+description: Tests POST, GET, PUT, PATCH, DELETE on /items endpoint
+timeout: 30s
+
+cleanup:
+  - db:
+      query: "DELETE FROM items WHERE name LIKE 'FlowTest%'"
+
+steps:
+  # --- POST: Create Item ---
+  - name: "POST /items — Create Item"
+    api:
+      method: POST
+      url: /items
+      body:
+        name: "FlowTest Widget"
+        description: "A test widget created by flowtest"
+        price: 29.99
+    assert:
+      - expr: "response.status == 201"
+        msg: "Should return 201 Created"
+      - expr: "response.body.name == 'FlowTest Widget'"
+      - expr: "response.body.price == 29.99"
+      - expr: "response.body.status == 'active'"
+      - expr: "response.body.id > 0"
+        msg: "Should return a valid item ID"
+    save:
+      item_id: response.body.id
+
+  # --- GET: Read Item ---
+  - name: "GET /items/{id} — Read Item"
+    api:
+      method: GET
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.id == item_id"
+      - expr: "response.body.name == 'FlowTest Widget'"
+      - expr: "response.body.price == 29.99"
+      - expr: "response.body.status == 'active'"
+
+  # --- GET: List Items ---
+  - name: "GET /items — List Items"
+    api:
+      method: GET
+      url: /items
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.total >= 1"
+        msg: "Should have at least one item"
+
+  # --- PUT: Full Update ---
+  - name: "PUT /items/{id} — Full Update"
+    api:
+      method: PUT
+      url: /items/${item_id}
+      body:
+        name: "FlowTest Widget V2"
+        description: "Updated by PUT"
+        price: 39.99
+        status: "active"
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.name == 'FlowTest Widget V2'"
+      - expr: "response.body.price == 39.99"
+      - expr: "response.body.description == 'Updated by PUT'"
+
+  # --- Verify PUT applied ---
+  - name: "GET /items/{id} — Verify PUT"
+    api:
+      method: GET
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.name == 'FlowTest Widget V2'"
+      - expr: "response.body.price == 39.99"
+
+  # --- PATCH: Partial Update ---
+  - name: "PATCH /items/{id} — Partial Update (price only)"
+    api:
+      method: PATCH
+      url: /items/${item_id}
+      body:
+        price: 49.99
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.price == 49.99"
+      - expr: "response.body.name == 'FlowTest Widget V2'"
+        msg: "Name should remain unchanged after PATCH"
+
+  # --- PATCH: Update status ---
+  - name: "PATCH /items/{id} — Update Status"
+    api:
+      method: PATCH
+      url: /items/${item_id}
+      body:
+        status: "archived"
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.status == 'archived'"
+      - expr: "response.body.price == 49.99"
+        msg: "Price should remain unchanged"
+
+  # --- Verify PATCH via DB ---
+  - name: "DB — Verify PATCH State"
+    db:
+      query: "SELECT name, price, status FROM items WHERE id = $1"
+      params:
+        - ${item_id}
+    assert:
+      - expr: "rows[0].name == 'FlowTest Widget V2'"
+      - expr: "rows[0].status == 'archived'"
+
+  # --- DELETE ---
+  - name: "DELETE /items/{id}"
+    api:
+      method: DELETE
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 200"
+      - expr: "response.body.deleted == true"
+      - expr: "response.body.id == item_id"
+
+  # --- Verify DELETE ---
+  - name: "GET /items/{id} — Verify Deleted"
+    api:
+      method: GET
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 404"
+        msg: "Should return 404 after delete"
+
+  # --- Verify DELETE in DB ---
+  - name: "DB — Verify Item Removed"
+    db:
+      query: "SELECT id FROM items WHERE id = $1"
+      params:
+        - ${item_id}
+    assert:
+      - expr: "row_count == 0"
+        msg: "Item should be gone from DB"

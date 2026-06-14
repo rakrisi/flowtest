@@ -1,0 +1,39 @@
+name: Smoke Test
+description: Validates flowtest engine works with shell driver and variable passing
+timeout: 10s
+
+steps:
+  - name: Echo Greeting
+    script:
+      run: echo "hello world"
+      assert_exit: 0
+    assert:
+      - expr: "stdout == 'hello world'"
+        msg: "Should capture stdout"
+    save:
+      greeting: stdout
+
+  - name: Verify Variable Passing
+    script:
+      run: echo "${greeting} from flowtest"
+      assert_exit: 0
+    assert:
+      - expr: "stdout == 'hello world from flowtest'"
+        msg: "Should resolve saved variable in script"
+
+  - name: JSON Script Output
+    script:
+      run: 'echo ''{"status":"ok","count":42}'''
+      assert_exit: 0
+    save:
+      json_out: stdout
+
+  - name: Exit Code Check
+    script:
+      run: exit 0
+      assert_exit: 0
+
+  - name: Conditional Skip
+    when: "1 == 2"
+    script:
+      run: echo "this should not run"

@@ -1,0 +1,184 @@
+name: MongoDB Validation
+description: Tests MongoDB operations — insertOne, find, findOne, updateOne, deleteOne, countDocuments
+timeout: 20s
+
+setup:
+  - mongo_db:
+      collection: test_items
+      operation: deleteMany
+      filter: { source: "flowtest" }
+  - mongo_db:
+      collection: test_events
+      operation: deleteMany
+      filter: { source: "flowtest" }
+
+cleanup:
+  - mongo_db:
+      collection: test_items
+      operation: deleteMany
+      filter: { source: "flowtest" }
+  - mongo_db:
+      collection: test_events
+      operation: deleteMany
+      filter: { source: "flowtest" }
+
+steps:
+  # --- insertOne ---
+  - name: "Mongo — Insert Item"
+    mongo_db:
+      collection: test_items
+      operation: insertOne
+      document:
+        name: "Mongo Test Widget"
+        price: 33.99
+        status: active
+        source: flowtest
+        tags: ["test", "mongo", "validation"]
+    assert:
+      - expr: "row_count == 1"
+        msg: "insertOne should report 1 inserted"
+    save:
+      mongo_item_id: rows[0]._id
+
+  # --- findOne ---
+  - name: "Mongo — FindOne Item"
+    mongo_db:
+      collection: test_items
+      operation: findOne
+      filter:
+        name: "Mongo Test Widget"
+        source: flowtest
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].name == 'Mongo Test Widget'"
+      - expr: "rows[0].price == 33.99"
+      - expr: "rows[0].status == 'active'"
+
+  # --- Insert second item ---
+  - name: "Mongo — Insert Second Item"
+    mongo_db:
+      collection: test_items
+      operation: insertOne
+      document:
+        name: "Mongo Test Gadget"
+        price: 19.99
+        status: active
+        source: flowtest
+        tags: ["test", "mongo"]
+
+  # --- find (multiple) ---
+  - name: "Mongo — Find All Test Items"
+    mongo_db:
+      collection: test_items
+      operation: find
+      filter:
+        source: flowtest
+    assert:
+      - expr: "row_count == 2"
+        msg: "Should find both test items"
+
+  # --- countDocuments ---
+  - name: "Mongo — Count Documents"
+    mongo_db:
+      collection: test_items
+      operation: countDocuments
+      filter:
+        source: flowtest
+    assert:
+      - expr: "row_count == 2"
+        msg: "countDocuments should return 2"
+
+  # --- updateOne ---
+  - name: "Mongo — Update Item Price"
+    mongo_db:
+      collection: test_items
+      operation: updateOne
+      filter:
+        name: "Mongo Test Widget"
+        source: flowtest
+      update:
+        price: 44.99
+        status: "updated"
+    assert:
+      - expr: "row_count == 1"
+        msg: "Should match 1 document"
+      - expr: "modified_count == 1"
+        msg: "Should modify 1 document"
+
+  # --- Verify update ---
+  - name: "Mongo — Verify Update"
+    mongo_db:
+      collection: test_items
+      operation: findOne
+      filter:
+        name: "Mongo Test Widget"
+        source: flowtest
+    assert:
+      - expr: "rows[0].price == 44.99"
+      - expr: "rows[0].status == 'updated'"
+
+  # --- Insert event in different collection ---
+  - name: "Mongo — Insert Event"
+    mongo_db:
+      collection: test_events
+      operation: insertOne
+      document:
+        type: "item.updated"
+        item_name: "Mongo Test Widget"
+        source: flowtest
+        timestamp: 1700000000
+    assert:
+      - expr: "row_count == 1"
+
+  # --- Cross-collection query ---
+  - name: "Mongo — Query Events"
+    mongo_db:
+      collection: test_events
+      operation: find
+      filter:
+        source: flowtest
+        type: "item.updated"
+    assert:
+      - expr: "row_count == 1"
+      - expr: "rows[0].item_name == 'Mongo Test Widget'"
+
+  # --- deleteOne ---
+  - name: "Mongo — Delete First Item"
+    mongo_db:
+      collection: test_items
+      operation: deleteOne
+      filter:
+        name: "Mongo Test Widget"
+        source: flowtest
+    assert:
+      - expr: "row_count == 1"
+        msg: "deleteOne should remove 1 document"
+
+  # --- Verify deletion ---
+  - name: "Mongo — Verify Deletion"
+    mongo_db:
+      collection: test_items
+      operation: findOne
+      filter:
+        name: "Mongo Test Widget"
+        source: flowtest
+    assert:
+      - expr: "row_count == 0"
+        msg: "Deleted item should not be found"
+
+  # --- Count after delete ---
+  - name: "Mongo — Count After Delete"
+    mongo_db:
+      collection: test_items
+      operation: countDocuments
+      filter:
+        source: flowtest
+    assert:
+      - expr: "row_count == 1"
+        msg: "Should have 1 item remaining"
+
+  # --- Summary ---
+  - name: "MongoDB validation summary"
+    script:
+      run: echo "MongoDB validation passed. Inserted ID=${mongo_item_id}"
+      assert_exit: 0

@@ -1,0 +1,121 @@
+name: Redis Validation
+description: Tests Redis caching — create item via API, verify Redis cache, set/get/del/exists/ttl
+timeout: 20s
+
+cleanup:
+  - db:
+      query: "DELETE FROM items WHERE name LIKE 'Redis%'"
+
+steps:
+  # --- Create item (triggers Redis cache) ---
+  - name: "Create Item for Redis Test"
+    api:
+      method: POST
+      url: /items
+      body:
+        name: "Redis Test Item"
+        description: "Item to test Redis caching"
+        price: 15.50
+    assert:
+      - expr: "response.status == 201"
+    save:
+      item_id: response.body.id
+
+  # --- GET triggers cache write ---
+  - name: "GET item (populates Redis cache)"
+    api:
+      method: GET
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 200"
+
+  # --- Verify item cached in Redis ---
+  - name: "Redis GET — Verify cached item"
+    redis:
+      action: get
+      key: "item:${item_id}"
+    assert:
+      - expr: "exists == true"
+        msg: "Item should be cached in Redis"
+      - expr: "value.name == 'Redis Test Item'"
+      - expr: "value.price == 15.5"
+      - expr: "value.status == 'active'"
+
+  # --- Redis EXISTS ---
+  - name: "Redis EXISTS — Key should exist"
+    redis:
+      action: exists
+      key: "item:${item_id}"
+    assert:
+      - expr: "exists == true"
+
+  # --- Redis TTL ---
+  - name: "Redis TTL — Should have TTL"
+    redis:
+      action: ttl
+      key: "item:${item_id}"
+    assert:
+      - expr: "expires == true"
+        msg: "Cache key should have a TTL set"
+      - expr: "ttl > 0"
+
+  # --- Redis SET custom key ---
+  - name: "Redis SET — Store custom value"
+    redis:
+      action: set
+      key: "flowtest:custom"
+      value: '{"test": true, "source": "flowtest"}'
+      ttl: 60s
+
+  # --- Redis GET custom key ---
+  - name: "Redis GET — Read custom value"
+    redis:
+      action: get
+      key: "flowtest:custom"
+    assert:
+      - expr: "exists == true"
+      - expr: "value.test == true"
+      - expr: "value.source == 'flowtest'"
+
+  # --- Redis KEYS pattern ---
+  - name: "Redis KEYS — Find flowtest keys"
+    redis:
+      action: keys
+      key: "flowtest:*"
+    assert:
+      - expr: "key_count >= 1"
+        msg: "Should find at least one flowtest key"
+
+  # --- Redis DEL ---
+  - name: "Redis DEL — Delete custom key"
+    redis:
+      action: del
+      key: "flowtest:custom"
+    assert:
+      - expr: "deleted == 1"
+
+  # --- Verify DEL ---
+  - name: "Redis EXISTS — Verify deleted"
+    redis:
+      action: exists
+      key: "flowtest:custom"
+    assert:
+      - expr: "exists == false"
+        msg: "Key should be gone after DEL"
+
+  # --- Clean up item ---
+  - name: "DELETE item"
+    api:
+      method: DELETE
+      url: /items/${item_id}
+    assert:
+      - expr: "response.status == 200"
+
+  # --- Verify cache cleared after delete ---
+  - name: "Redis EXISTS — Cache cleared after API delete"
+    redis:
+      action: exists
+      key: "item:${item_id}"
+    assert:
+      - expr: "exists == false"
+        msg: "Redis cache should be cleared when item is deleted"
